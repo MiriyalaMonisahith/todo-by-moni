@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { base44 } from "@/api/base44Client";
 import { Button } from "@/components/ui/button";
@@ -14,9 +14,22 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [redirecting, setRedirecting] = useState(true);
+  
   // Post-login destination (e.g. the MCP OAuth consent page sends users here
   // with returnTo so the grant flow can resume). Same-origin paths only.
   const returnTo = safeReturnTo();
+
+  useEffect(() => {
+    if (!redirecting) return;
+    
+    // Automatically trigger Google OAuth login on page load
+    const timer = setTimeout(() => {
+      base44.auth.loginWithProvider("google", returnTo);
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [redirecting, returnTo]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,6 +48,44 @@ export default function Login() {
   const handleGoogle = () => {
     base44.auth.loginWithProvider("google", returnTo);
   };
+
+  if (redirecting) {
+    return (
+      <AuthLayout
+        icon={LogIn}
+        title="Redirecting to Google"
+        subtitle="Connecting to secure login..."
+        footer={
+          <button
+            onClick={() => setRedirecting(false)}
+            className="text-primary font-medium hover:underline focus:outline-none"
+          >
+            Use email and password instead
+          </button>
+        }
+      >
+        <div className="flex flex-col items-center justify-center py-12 space-y-6">
+          <div className="relative flex items-center justify-center">
+            <div className="w-16 h-16 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+            <GoogleIcon className="absolute w-6 h-6" />
+          </div>
+          <div className="text-center space-y-2">
+            <p className="text-sm text-muted-foreground animate-pulse">
+              Forwarding you to Google sign-in page...
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGoogle}
+              className="mt-4"
+            >
+              Click here if not redirected automatically
+            </Button>
+          </div>
+        </div>
+      </AuthLayout>
+    );
+  }
 
   return (
     <AuthLayout
